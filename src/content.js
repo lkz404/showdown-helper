@@ -1,4 +1,4 @@
-import { estimateDamage, moveInfo, spriteIdFor, withPasteStats } from './calc.js';
+import { estimateDamage, megaInfo, moveInfo, spriteIdFor, withPasteStats } from './calc.js';
 import { typeIcon } from './type-icons.js';
 
 const TYPE_COLORS = {
@@ -17,6 +17,7 @@ const state = {
   teamSig: '',
   collapsed: false,
   docked: false,
+  mega: new Map(), // "room|species" -> mega forme the user switched an enemy to
   paste: null, // imported team { link, sets }, written by the toolbar popup into chrome.storage.local
   usage: new Map(), // "format|gameType|species" -> { status: 'loading'|'ok'|'none'|'error', data, t }
 };
@@ -192,6 +193,9 @@ function renderTargets(snap) {
   return team.find((m) => m.key === state.targetKey) || null;
 }
 
+// Types whose colour is light enough that the tile needs dark text.
+const LIGHT_TYPES = new Set(['Normal', 'Electric', 'Ground', 'Ice', 'Steel', 'Bug', 'Grass', 'Flying', 'Fairy', 'Rock']);
+
 function renderMove(snap, enemy, member, { move, pct }) {
   const d = member
     ? estimateDamage(snap, enemy, move, member)
@@ -199,22 +203,59 @@ function renderMove(snap, enemy, member, { move, pct }) {
   const color = TYPE_COLORS[d.type] || TYPE_COLORS['???'];
   const name = d.name || move;
   const icon = typeIcon(d.type);
-  const usage = Number.isFinite(pct) ? `${pct >= 10 ? Math.round(pct) : pct.toFixed(1)}%` : '';
+  const usage = Number.isFinite(pct) ? `${pct >= 10 ? Math.round(pct) : pct.toFixed(1)}% usage` : '';
   const dmg = [d.text, d.ko].filter(Boolean).join(' · ');
-  return `<div class="smh-move">
-    <div class="smh-mcell">
-      <span class="smh-mname" style="background:${color}" title="${esc(name)} (${esc(d.type)})">${
-        icon ? `<span class="smh-ticon">${icon}</span>` : ''
-      }<span class="smh-mtext">${esc(name)}</span></span>
-      ${usage ? `<span class="smh-usage" title="Usage on Pikalytics">${usage}</span>` : ''}
+  const cls = ['smh-move', LIGHT_TYPES.has(d.type) ? 'smh-light' : '', d.text === '—' ? 'smh-status' : '']
+    .filter(Boolean)
+    .join(' ');
+  return `<div class="${cls}" style="--c:${color}" title="${esc(name)} (${esc(d.type)})${dmg ? ' · ' + esc(dmg) : ''}">
+    <div class="smh-who">
+      ${icon ? `<span class="smh-ticon">${icon}</span>` : ''}
+      <div class="smh-mtext">
+        <div class="smh-nameline"><span class="smh-mname">${esc(name)}</span>${d.canKO ? '<span class="smh-kotag">KO</span>' : ''}</div>
+        ${usage ? `<span class="smh-usage">${usage}</span>` : ''}
+      </div>
     </div>
-    <div class="smh-dmg" title="${esc(dmg)}">
-      <span class="smh-dmg-main${d.canKO ? ' smh-ko' : ''}">${esc(d.text)}</span>
-    </div>
+    <span class="smh-dmg">${esc(d.text)}</span>
   </div>`;
 }
 
-function renderCard(snap, enemy, member) {
+// Applies the Mega toggle: an enemy the user switched to its Mega forme is shown, looked up
+// on Pikalytics and calculated as that forme. One already mega evolved in the battle is locked on.
+function applyMega(snap, enemy) {
+  const info = megaInfo(snap.gen, enemy.species);
+  if (!info.formes.length) return { enemy, info, chosen: '', locked: false, key: '' };
+  const key = `${snap.roomid}|${enemy.species}`;
+  if (info.isMega) return { enemy, info, chosen: enemy.species, locked: true, key };
+  const chosen = state.mega.get(key) || '';
+  if (!chosen) return { enemy, info, chosen, locked: false, key };
+  // The Mega forme brings its own ability, so drop the base forme's.
+  return { enemy: { ...enemy, species: chosen, spriteid: undefined, ability: '' }, info, chosen, locked: false, key };
+}
+
+function megaButtons(m) {
+  if (!m.info.formes.length) return '';
+  const buttons = m.info.formes
+    .map((f) => {
+      const label = `Mega ${f.replace(/^.*?-Mega-?/, '')}`.trim();
+      return `<button type="button" class="smh-mega" data-key="${esc(m.key)}" data-forme="${esc(f)}" aria-pressed="${m.chosen === f}"${m.locked ? ' disabled' : ''} title="${m.locked ? 'Already Mega evolved' : 'Show this Pokémon as its Mega form'}">${esc(label)}</button>`;
+    })
+    .join('');
+  return `<div class="smh-megas">${buttons}</div>`;
+}
+
+body.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button.smh-mega');
+  if (!btn || btn.disabled) return;
+  const { key, forme } = btn.dataset;
+  if (state.mega.get(key) === forme) state.mega.delete(key);
+  else state.mega.set(key, forme);
+  render();
+});
+
+function renderCard(snap, baseEnemy, member) {
+  const m = applyMega(snap, baseEnemy);
+  const enemy = m.enemy;
   const usage = requestUsage(snap, enemy.species);
   let rows;
   let src = ''; // shows which Pikalytics format was used when it isn't the battle's own
@@ -231,6 +272,7 @@ function renderCard(snap, enemy, member) {
   return `<div class="smh-card">
     ${spriteImg('smh-sprite', enemy, snap.gen)}
     <div class="smh-name">${esc(enemy.species)}${src}</div>
+    ${megaButtons(m)}
     ${rows}
   </div>`;
 }

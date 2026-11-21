@@ -73,6 +73,25 @@ export function spriteIdFor(species, genNum = 9) {
   return rest.length ? `${toID(base)}-${toID(rest.join(''))}` : id;
 }
 
+const IS_MEGA = /-Mega(-|$)/;
+
+// Mega formes a species can take, e.g. Charizard -> ['Charizard-Mega-X', 'Charizard-Mega-Y'].
+// `isMega` is true when `species` already is one (Showdown reports the mega forme once the
+// Pokemon has evolved), and `base` is then its unevolved species.
+export function megaInfo(genNum, species) {
+  try {
+    const gen = getGen(genNum);
+    const s = gen.species.get(toID(species));
+    if (!s) return { base: species, formes: [], isMega: false };
+    const isMega = IS_MEGA.test(s.name);
+    const base = isMega ? gen.species.get(toID(s.baseSpecies)) : s;
+    const formes = ((base && base.otherFormes) || []).filter((n) => IS_MEGA.test(n));
+    return { base: base ? base.name : species, formes, isMega };
+  } catch (e) {
+    return { base: species, formes: [], isMega: false };
+  }
+}
+
 // Move info (type + category) without needing a defender.
 export function moveInfo(genNum, moveName) {
   try {
