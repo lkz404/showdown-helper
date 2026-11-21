@@ -190,8 +190,18 @@ function snapshot() {
     terrain,
     enemy: readEnemy(battle),
     team: readTeam(room, battle),
+    // Showdown plays its step queue (move animations included) and sets atQueueEnd once
+    // every queued step has finished animating and it is waiting for the next input.
+    // While paused (e.g. a replay before Play) nothing is animating either.
+    settled: !!(battle.atQueueEnd || battle.paused) && battle.seeking == null,
   };
 }
+
+// Hold the panel on its last snapshot while Showdown is still animating, so enemy
+// switches, field changes and our HP only show up after the move animation finishes.
+const SETTLE_TIMEOUT_MS = 20000; // safety net in case the flags ever stay unsettled
+let lastRoom = null;
+let unsettledSince = 0;
 
 function tick() {
   let snap = null;
@@ -200,9 +210,16 @@ function tick() {
   } catch (e) {
     snap = null;
   }
+  if (snap && !snap.settled && lastRoom === snap.roomid && lastJSON !== 'null') {
+    unsettledSince = unsettledSince || Date.now();
+    if (Date.now() - unsettledSince < SETTLE_TIMEOUT_MS) return;
+  }
+  unsettledSince = 0;
+  if (snap) delete snap.settled;
   const json = JSON.stringify(snap);
   if (json === lastJSON) return;
   lastJSON = json;
+  lastRoom = snap ? snap.roomid : null;
   window.postMessage({ source: 'smh', snapshot: snap }, ORIGIN);
 }
 

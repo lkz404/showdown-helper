@@ -164,20 +164,17 @@ function renderTargets(snap) {
   return member;
 }
 
-function renderMove(snap, enemy, member, { move, pct }) {
+function renderMove(snap, enemy, member, { move }) {
   const d = member
     ? estimateDamage(snap, enemy, move, member)
     : { ...moveInfo(snap.gen, move), text: '', ko: '' };
   const color = TYPE_COLORS[d.type] || TYPE_COLORS['???'];
+  const name = d.name || move;
   const dmg = [d.text, d.ko].filter(Boolean).join(' · ');
   return `<div class="smh-move">
-    <div class="smh-row">
-      <span class="smh-mname" title="${esc(d.name || move)}">${esc(d.name || move)}</span>
-      <span class="smh-type" style="background:${color}">${esc(d.type)}</span>
-    </div>
-    <div class="smh-row">
-      <span class="smh-pct">${pct.toFixed(0)}% usage</span>
-      <span class="smh-dmg" title="${esc(dmg)}">${esc(d.text)}${d.ko ? ` <small>${esc(d.ko)}</small>` : ''}</span>
+    <span class="smh-mname" style="background:${color}" title="${esc(name)} (${esc(d.type)})">${esc(name)}</span>
+    <div class="smh-dmg" title="${esc(dmg)}">
+      <span class="smh-dmg-main${d.canKO ? ' smh-ko' : ''}">${esc(d.text)}</span>
     </div>
   </div>`;
 }

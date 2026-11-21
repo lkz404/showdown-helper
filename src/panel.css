@@ -88,8 +88,8 @@ html.smh-docked body {
   opacity: 0.7;
 }
 #smh-target-sprite {
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
 }
 #smh-target {
@@ -127,7 +127,7 @@ html.smh-docked body {
 }
 .smh-sprite {
   align-self: center;
-  height: 12vh;
+  height: 7vh;
   max-width: 100%;
   min-height: 0;
   object-fit: contain;
@@ -153,12 +153,15 @@ html.smh-docked body {
   grid-template-rows: repeat(5, minmax(0, 1fr));
   gap: 5px;
 }
+/* Text sizes below scale with the width of the moves list (cqw) so names and
+   numbers always fit their boxes, whatever the window size. */
+.smh-moves { container-type: inline-size; }
 .smh-move {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  padding: 2px 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -166,30 +169,50 @@ html.smh-docked body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
 }
-.smh-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+/* Move name in a rounded box coloured by the move's type */
+.smh-mname {
+  justify-self: stretch; /* every pill the same width */
   min-width: 0;
-}
-.smh-mname { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.smh-type {
-  padding: 1px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-align: center;
+  line-height: 1.25;
+  font-size: clamp(10px, min(4.3cqw, 2.1vh), 16px);
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
-  flex: none;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.smh-pct { opacity: 0.7; font-size: 12px; flex: none; }
+/* Damage %: large, centred in the right half of the box */
 .smh-dmg {
   min-width: 0;
-  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.smh-dmg-main {
+  max-width: 100%;
+  line-height: 1;
+  font-size: clamp(14px, min(6.4cqw, 3.4vh), 30px);
+  font-weight: 800;
+  white-space: nowrap;
+}
+/* Move can KO the selected Pokémon */
+.smh-dmg-main.smh-ko {
+  color: #ff4040;
+  text-shadow: 0 0 8px rgba(255, 64, 64, 0.55);
+}
+.smh-dmg small {
+  max-width: 100%;
+  font-size: 11px;
+  opacity: 0.65;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.smh-dmg small { font-size: 11px; opacity: 0.65; }

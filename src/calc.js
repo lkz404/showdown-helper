@@ -135,14 +135,20 @@ export function estimateDamage(snap, enemy, moveName, member) {
     const result = calculate(gen, attacker, defender, new Move(gen, moveName), field);
     const [min, max] = result.range();
     const hp = defender.maxHP();
-    const pct = (n) => ((n / hp) * 100).toFixed(1);
+    // Whole percents keep the big number short enough to fit its box; <10% keeps a decimal.
+    const pct = (n) => {
+      const v = (n / hp) * 100;
+      return v >= 10 ? String(Math.round(v)) : v.toFixed(1);
+    };
     let ko = '';
     try {
       ko = max > 0 ? result.kochance().text : '';
     } catch (e) {
       ko = '';
     }
-    return { ...info, text: max > 0 ? `${pct(min)}–${pct(max)}%` : '0%', ko };
+    // Can this move KO the target (some roll >= its current HP)?
+    const canKO = max > 0 && max >= defender.curHP();
+    return { ...info, text: max > 0 ? `${pct(min)}–${pct(max)}%` : '0%', ko, canKO };
   } catch (e) {
     return { ...info, text: 'n/a', ko: '' };
   }
