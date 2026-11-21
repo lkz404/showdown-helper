@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Showdown Helper</title>
+<style>
+  body { width: 320px; margin: 0; padding: 14px; box-sizing: border-box; background: #14161e; color: #e8e8f0; font: 13px/1.35 system-ui, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 15px; }
+  p { margin: 0 0 10px; opacity: 0.75; }
+  form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  input { min-width: 0; padding: 7px 8px; font: inherit; color: inherit; background: #2a2d3a; border: 1px solid #555; border-radius: 6px; }
+  button { padding: 7px 12px; font: 600 13px system-ui, sans-serif; color: #fff; background: #3b6bd6; border: 0; border-radius: 6px; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  button.link { padding: 0; background: none; color: #ff8a8a; font-weight: 500; text-decoration: underline; }
+  #msg { grid-column: 1 / -1; min-height: 1.35em; font-size: 12px; opacity: 0.85; }
+  #msg.bad { color: #ff7a7a; opacity: 1; }
+  #team { margin-top: 12px; }
+  #team[hidden] { display: none; }
+  #team h2 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.7; font-weight: 600; }
+  ol { margin: 0 0 8px; padding-left: 20px; }
+</style>
+</head>
+<body>
+  <h1>Showdown Helper</h1>
+  <p>Import your team from a Pokepaste so damage uses your real stats.</p>
+  <form id="form">
+    <input id="url" type="url" placeholder="https://pokepast.es/…" aria-label="Pokepaste link" autocomplete="off">
+    <button id="go" type="submit">Import</button>
+    <div id="msg" role="status"></div>
+  </form>
+  <div id="team" hidden>
+    <h2>Imported team</h2>
+    <ol id="list"></ol>
+    <button id="clear" class="link" type="button">Remove imported team</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

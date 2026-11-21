@@ -84,6 +84,40 @@ export function moveInfo(genNum, moveName) {
   }
 }
 
+const sameMon = (a, b) => {
+  const x = toID(a);
+  const y = toID(b);
+  return x === y || toID(String(a).split('-')[0]) === toID(String(b).split('-')[0]);
+};
+
+// Gives a battle team member the real stats of its imported paste set (nature/EVs/IVs),
+// keeping its live HP fraction, status, item, ability and Tera. A member with no matching
+// set (or one the calc can't build) is returned unchanged.
+export function withPasteStats(snap, member, sets) {
+  const set =
+    sets.find((s) => toID(s.species) === toID(member.species)) ||
+    sets.find((s) => sameMon(s.species, member.species));
+  if (!set) return member;
+  try {
+    const level = member.level || set.level || (/vgc/i.test(snap.format || '') ? 50 : 100);
+    const p = new Pokemon(getGen(snap.gen || 9), set.species, { level, nature: set.nature, evs: set.evs, ivs: set.ivs });
+    const stats = { ...p.rawStats };
+    const frac = member.stats && member.stats.hp && member.curHP >= 0 ? member.curHP / member.stats.hp : 1;
+    return {
+      ...member,
+      stats,
+      maxhp: stats.hp,
+      curHP: member.fainted ? 0 : Math.max(1, Math.round(frac * stats.hp)),
+      item: member.item || set.item,
+      ability: member.ability || set.ability,
+      tera: member.tera || set.tera,
+      fromPaste: true,
+    };
+  } catch (e) {
+    return member;
+  }
+}
+
 function buildDefender(gen, member) {
   const p = new Pokemon(gen, member.species, {
     level: member.level,

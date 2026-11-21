@@ -136,6 +136,7 @@ function readTeam(room, battle) {
         level: lvl ? +lvl : 100,
         stats: { hp: c.maxhp, ...(p.stats || {}) },
         curHP: c.hp,
+        maxhp: c.maxhp,
         status: c.status,
         fainted: c.fainted,
         active: !!p.active,
@@ -156,6 +157,7 @@ function readTeam(room, battle) {
     level: p.level || 100,
     stats: null, // unknown: calc falls back to a neutral spread
     curHP: p.hp,
+    maxhp: p.maxhp,
     status: p.status || '',
     fainted: !!p.fainted,
     active: active.has(p),
@@ -190,6 +192,8 @@ function snapshot() {
     terrain,
     enemy: readEnemy(battle),
     team: readTeam(room, battle),
+    // false during team preview: the 4 Pokemon are not chosen until turn 1 begins.
+    started: (battle.turn || 0) > 0,
     // Showdown plays its step queue (move animations included) and sets atQueueEnd once
     // every queued step has finished animating and it is waiting for the next input.
     // While paused (e.g. a replay before Play) nothing is animating either.

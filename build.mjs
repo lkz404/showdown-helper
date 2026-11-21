@@ -5,7 +5,7 @@ rmSync('dist', { recursive: true, force: true });
 mkdirSync('dist', { recursive: true });
 
 await build({
-  entryPoints: ['src/page-hook.js', 'src/content.js', 'src/background.js'],
+  entryPoints: ['src/page-hook.js', 'src/content.js', 'src/background.js', 'src/popup.js'],
   outdir: 'dist',
   bundle: true,
   format: 'iife',
@@ -14,3 +14,4 @@ await build({
 });
 
 cpSync('src/panel.css', 'dist/panel.css');
+cpSync('src/popup.html', 'dist/popup.html');

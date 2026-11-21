@@ -71,42 +71,71 @@ html.smh-docked body {
   line-height: 1;
 }
 
-/* Centered target picker with sprite */
+/* Target picker: boxes like Showdown's team buttons */
 .smh-target {
   flex: none;
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 6px;
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .smh-target-label {
+  text-align: center;
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.7;
 }
-#smh-target-sprite {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
+.smh-team {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
-#smh-target {
-  width: 85%;
-  max-width: 100%;
-  height: auto;
-  margin: 0;
-  padding: 8px 10px;
-  font: 600 16px/1.2 system-ui, sans-serif;
-  text-align: center;
-  text-align-last: center;
-  background: #2a2d3a;
+.smh-team .smh-note { grid-column: 1 / -1; padding: 4px 0; }
+.smh-tbox {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+  padding: 4px 8px 5px 4px;
+  font: 600 12px/1.2 system-ui, sans-serif;
   color: inherit;
-  border: 1px solid #555;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 6px;
   cursor: pointer;
 }
+.smh-tbox:hover { background: rgba(255, 255, 255, 0.11); }
+.smh-tbox.smh-selected {
+  background: rgba(99, 144, 240, 0.22);
+  border-color: #6390f0;
+  box-shadow: 0 0 0 1px #6390f0 inset;
+}
+.smh-tbox .smh-tsprite {
+  grid-row: 1 / span 2;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+.smh-tname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; align-self: end; }
+.smh-hpbar {
+  align-self: start;
+  height: 5px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 3px;
+}
+.smh-hpbar > span { display: block; height: 100%; }
+.smh-hp-ok { background: #4fc15a; }
+.smh-hp-mid { background: #e8c53a; }
+.smh-hp-low { background: #e5503f; }
+.smh-tbox.smh-fainted { opacity: 0.45; }
+.smh-tbox.smh-fainted .smh-tname { text-decoration: line-through; }
 
 /* Enemy cards share the remaining height evenly */
 .smh-body {
@@ -158,7 +187,7 @@ html.smh-docked body {
 .smh-moves { container-type: inline-size; }
 .smh-move {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
   align-items: center;
   gap: 8px;
   padding: 0 8px;
@@ -171,9 +200,13 @@ html.smh-docked body {
 }
 /* Move name in a rounded box coloured by the move's type */
 .smh-mname {
-  justify-self: stretch; /* every pill the same width */
+  flex: 1 1 auto;
   min-width: 0;
-  padding: 3px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 3px 6px;
   border-radius: 999px;
   text-align: center;
   line-height: 1.25;
@@ -184,6 +217,19 @@ html.smh-docked body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* Type icon, name and usage share the left cell; usage is smaller than the name */
+.smh-mcell { min-width: 0; display: flex; align-items: center; gap: 6px; }
+.smh-mtext { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.smh-ticon { flex: none; width: 1.15em; height: 1.15em; display: inline-flex; }
+.smh-ticon svg { width: 100%; height: 100%; display: block; }
+.smh-usage {
+  flex: none;
+  min-width: 2.9em; /* same width on every row, so every pill is the same width */
+  font-size: clamp(10px, min(3.7cqw, 1.8vh), 13px);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
 }
 /* Damage %: large, centred in the right half of the box */
 .smh-dmg {
@@ -200,7 +246,7 @@ html.smh-docked body {
   max-width: 100%;
   line-height: 1;
   font-size: clamp(14px, min(6.4cqw, 3.4vh), 30px);
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
 }
 /* Move can KO the selected Pokémon */

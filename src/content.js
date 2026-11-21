@@ -1,4 +1,5 @@
-import { estimateDamage, moveInfo, spriteIdFor } from './calc.js';
+import { estimateDamage, moveInfo, spriteIdFor, withPasteStats } from './calc.js';
+import { typeIcon } from './type-icons.js';
 
 const TYPE_COLORS = {
   Normal: '#a8a77a', Fire: '#ee8130', Water: '#6390f0', Electric: '#f7d02c',
@@ -16,6 +17,7 @@ const state = {
   teamSig: '',
   collapsed: false,
   docked: false,
+  paste: null, // imported team { link, sets }, written by the toolbar popup into chrome.storage.local
   usage: new Map(), // "format|gameType|species" -> { status: 'loading'|'ok'|'none'|'error', data, t }
 };
 
@@ -29,20 +31,36 @@ panel.innerHTML = `
   </div>
   <div class="smh-target">
     <div class="smh-target-label">Damage vs</div>
-    <img id="smh-target-sprite" alt="">
-    <select id="smh-target"></select>
+    <div class="smh-team" id="smh-team"></div>
   </div>
   <div class="smh-body" id="smh-body"></div>`;
 panel.style.display = 'none';
 document.documentElement.appendChild(panel);
 
 const body = panel.querySelector('#smh-body');
-const select = panel.querySelector('#smh-target');
-const targetSprite = panel.querySelector('#smh-target-sprite');
+const teamEl = panel.querySelector('#smh-team');
 const toggleBtn = panel.querySelector('#smh-toggle');
+const targetLabel = panel.querySelector('.smh-target-label');
 
-select.addEventListener('change', () => {
-  state.targetKey = select.value;
+// The imported team comes from the toolbar popup; follow it live.
+try {
+  chrome.storage.local.get('smh_paste', (r) => {
+    state.paste = (r && r.smh_paste) || null;
+    render();
+  });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.smh_paste) return;
+    state.paste = changes.smh_paste.newValue || null;
+    render();
+  });
+} catch (e) {
+  /* extension reloaded: orphaned script */
+}
+
+teamEl.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-key]');
+  if (!btn) return;
+  state.targetKey = btn.dataset.key;
   state.userPicked = true;
   render();
 });
@@ -94,15 +112,6 @@ function spriteImg(cls, mon, gen) {
   return `<img class="${cls}" alt="${esc(mon.species)}" src="${esc(first)}" data-fallbacks="${esc(rest.join('|'))}">`;
 }
 
-function setSprite(img, mon, gen) {
-  const [first, ...rest] = spriteUrls(mon, gen);
-  if (img.dataset.src === first) return;
-  img.dataset.src = first;
-  img.dataset.fallbacks = rest.join('|');
-  img.style.visibility = 'visible';
-  img.src = first;
-}
-
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -145,34 +154,60 @@ function pickTarget(team) {
   state.userPicked = false;
 }
 
-function renderTargets(snap) {
-  const team = snap.team;
-  pickTarget(team);
-  const sig = JSON.stringify(team.map((m) => [m.key, m.species, m.fainted]));
-  if (sig !== state.teamSig) {
-    // Rebuild options only when the team changes, so an open dropdown isn't closed.
-    state.teamSig = sig;
-    select.innerHTML = team
-      .map((m) => `<option value="${esc(m.key)}">${esc(m.species)}${m.fainted ? ' (fainted)' : ''}</option>`)
-      .join('');
-  }
-  if (state.targetKey !== null && select.value !== state.targetKey) select.value = state.targetKey;
-  const member = team.find((m) => m.key === state.targetKey) || null;
-  if (member) setSprite(targetSprite, member, snap.gen);
-  targetSprite.style.visibility = member ? 'visible' : 'hidden';
-  select.disabled = !team.length;
-  return member;
+function hpClass(frac) {
+  return frac > 0.5 ? 'smh-hp-ok' : frac > 0.2 ? 'smh-hp-mid' : 'smh-hp-low';
 }
 
-function renderMove(snap, enemy, member, { move }) {
+function teamBox(m, snap) {
+  const frac = m.maxhp ? Math.max(0, Math.min(1, m.curHP / m.maxhp)) : m.fainted ? 0 : 1;
+  const cls = ['smh-tbox', m.key === state.targetKey ? 'smh-selected' : '', m.fainted ? 'smh-fainted' : '']
+    .filter(Boolean)
+    .join(' ');
+  return `<button type="button" class="${cls}" data-key="${esc(m.key)}" aria-pressed="${m.key === state.targetKey}" title="${esc(m.species)}">
+    ${spriteImg('smh-tsprite', m, snap.gen)}
+    <span class="smh-tname">${esc(m.species)}</span>
+    <span class="smh-hpbar"><span class="${hpClass(frac)}" style="width:${Math.round(frac * 100)}%"></span></span>
+  </button>`;
+}
+
+// The target boxes (like Showdown's own team buttons). Returns the picked member, or null
+// until the battle has started and the player's Pokemon are chosen.
+function renderTargets(snap) {
+  if (!snap.started) {
+    state.teamSig = '';
+    targetLabel.textContent = 'Damage vs';
+    teamEl.innerHTML = '<div class="smh-note">Damage appears once the battle starts</div>';
+    return null;
+  }
+  const sets = state.paste ? state.paste.sets : [];
+  const team = sets.length ? snap.team.map((m) => withPasteStats(snap, m, sets)) : snap.team;
+  pickTarget(team);
+  // Rebuild only when something shown changes, so a click is never lost to a re-render.
+  const sig = JSON.stringify([state.targetKey, team.map((m) => [m.key, m.species, m.fainted, m.curHP, m.maxhp])]);
+  if (sig !== state.teamSig) {
+    state.teamSig = sig;
+    teamEl.innerHTML = team.map((m) => teamBox(m, snap)).join('');
+  }
+  targetLabel.textContent = team.some((m) => m.fromPaste) ? 'Damage vs · Pokepaste stats' : 'Damage vs';
+  return team.find((m) => m.key === state.targetKey) || null;
+}
+
+function renderMove(snap, enemy, member, { move, pct }) {
   const d = member
     ? estimateDamage(snap, enemy, move, member)
     : { ...moveInfo(snap.gen, move), text: '', ko: '' };
   const color = TYPE_COLORS[d.type] || TYPE_COLORS['???'];
   const name = d.name || move;
+  const icon = typeIcon(d.type);
+  const usage = Number.isFinite(pct) ? `${pct >= 10 ? Math.round(pct) : pct.toFixed(1)}%` : '';
   const dmg = [d.text, d.ko].filter(Boolean).join(' · ');
   return `<div class="smh-move">
-    <span class="smh-mname" style="background:${color}" title="${esc(name)} (${esc(d.type)})">${esc(name)}</span>
+    <div class="smh-mcell">
+      <span class="smh-mname" style="background:${color}" title="${esc(name)} (${esc(d.type)})">${
+        icon ? `<span class="smh-ticon">${icon}</span>` : ''
+      }<span class="smh-mtext">${esc(name)}</span></span>
+      ${usage ? `<span class="smh-usage" title="Usage on Pikalytics">${usage}</span>` : ''}
+    </div>
     <div class="smh-dmg" title="${esc(dmg)}">
       <span class="smh-dmg-main${d.canKO ? ' smh-ko' : ''}">${esc(d.text)}</span>
     </div>

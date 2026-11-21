@@ -4,8 +4,9 @@
   "version": "1.0.0",
   "description": "Shows the top 5 Pikalytics moves of the opponent's Pokémon on Pokémon Showdown, with type and estimated max-offense damage.",
   "permissions": ["storage"],
-  "host_permissions": ["https://www.pikalytics.com/*"],
+  "host_permissions": ["https://www.pikalytics.com/*", "https://pokepast.es/*"],
   "background": { "service_worker": "dist/background.js" },
+  "action": { "default_popup": "dist/popup.html", "default_title": "Showdown Helper" },
   "content_scripts": [
     {
       "matches": ["https://play.pokemonshowdown.com/*"],
