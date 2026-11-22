@@ -1,0 +1,62 @@
+# Builds the extension and attaches a ready-to-load zip to a GitHub release, so people can
+# install it without Node.js: download, unzip, then Load unpacked in chrome://extensions.
+#
+# To release: bump "version" in manifest.json and package.json, commit, then
+#   git tag v1.2.0 && git push origin v1.2.0
+# The zip is always named showdown-helper.zip, so this link stays the same across versions:
+#   https://github.com/lkz404/showdown-helper/releases/latest/download/showdown-helper.zip
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check the tag matches manifest.json
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          have="$(node -p "require('./manifest.json').version")"
+          if [ "$want" != "$have" ]; then
+            echo "::error::tag $GITHUB_REF_NAME but manifest.json says $have"
+            exit 1
+          fi
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Zip the extension
+        run: |
+          mkdir -p out/showdown-helper
+          cp -r manifest.json dist assets out/showdown-helper/
+          cd out && zip -r -X ../showdown-helper.zip showdown-helper
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<'EOF'
+          **Install (no Node.js needed)**
+          1. Download **showdown-helper.zip** below and unzip it.
+          2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
+          3. Choose **Load unpacked** and pick the unzipped `showdown-helper` folder.
+          4. Start or watch a battle on Pokémon Showdown. The panel docks on the right.
+
+          **Update from an older version:** delete the old folder, unzip this one in its place, then press the reload button on the extension's card in `chrome://extensions`.
+          EOF
+          gh release create "$GITHUB_REF_NAME" showdown-helper.zip \
+            --title "Showdown Helper $GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag

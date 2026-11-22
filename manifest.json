@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Showdown Enemy Moves Helper",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Shows the top 5 Pikalytics moves of the opponent's Pokémon on Pokémon Showdown, with type and estimated max-offense damage.",
   "permissions": ["storage"],
   "host_permissions": ["https://www.pikalytics.com/*", "https://pokepast.es/*"],
