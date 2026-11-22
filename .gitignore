@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# Hallmark design harness output: screenshots, logs
+.hallmark/

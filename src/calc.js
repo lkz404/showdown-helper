@@ -144,6 +144,7 @@ function buildDefender(gen, member) {
     ability: abilityName(gen, member.ability),
     status: status(member.status),
     teraType: typeName(gen, member.tera),
+    boosts: boosts(member.boosts), // our live Def/SpD stages (and the rest; the calc reads what applies)
   });
   if (member.stats) {
     // Real final stats from the battle request override the neutral spread.

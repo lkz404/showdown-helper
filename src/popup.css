@@ -1,0 +1,139 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand (Showdown Helper, showdown-helper-site/DESIGN.md) · redesign: full
+ * paper: oklch(100% 0 0) · accent: oklch(41% 0.17 262) · display: Archivo · body: Archivo
+ * nav: kept (title strip) · signature: the imported team filled in as a ruled list in cobalt · states: empty, importing, error, imported
+ * axes: light/grotesk-heavy/chromatic-cobalt · posture: toolbar popup · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H5 E4 S4 R5 V3 · weakest: V, shares the panel's and the site's system on purpose; one ruled form, one field, one list */
+/* Hallmark · finish-review: subagent (fix) · 8 findings · 8 resolved (HP contrast, picker columns from team size, focus vs selection, toggle name and hit area, title vs enemy name, picker type size, notes as ruled rows, stale sheet) · gap: type reads from a swatch, not a full-colour row */
+
+@font-face { font-family: "Archivo"; font-style: normal; font-weight: 100 900; font-stretch: 62% 125%; font-display: swap;
+  src: url("../assets/fonts/archivo-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Archivo"; font-style: normal; font-weight: 100 900; font-stretch: 62% 125%; font-display: swap;
+  src: url("../assets/fonts/archivo-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+:root {
+  --color-paper: #ffffff;
+  --color-paper-2: #f3ecdb;
+  --color-paper-3: #e4d7b8;
+  --color-ink: #17203a;
+  --color-ink-2: #4a5470;
+  --color-rule: #17203a;
+  --color-rule-soft: color-mix(in oklab, #17203a 18%, transparent);
+  --color-accent: #0047ab;
+  --color-accent-deep: #00348a;
+  --color-accent-ink: #ffffff;
+  --color-focus: #0047ab;
+  --color-error: #b3121f;
+  --font-body: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --text-xs: 12px; --text-sm: 13px; --text-md: 15px; --text-lg: 17px;
+  --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px;
+  --radius: 2px;
+  --dur-micro: 120ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+body {
+  width: 320px;
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: 400 var(--text-md)/1.45 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  caret-color: var(--color-accent);
+  scrollbar-color: var(--color-ink-2) var(--color-paper);
+}
+::selection { background: var(--color-accent); color: var(--color-accent-ink); }
+:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 2px; }
+h1, h2, p, ol { margin: 0; }
+[hidden] { display: none !important; }
+
+.bar {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 2px solid var(--color-rule);
+}
+h1 { font-size: var(--text-lg); font-weight: 800; letter-spacing: -0.01em; line-height: 1.2; text-wrap: balance; }
+
+.sheet { display: grid; gap: var(--space-md); padding: var(--space-md); }
+.intro { color: var(--color-ink-2); text-wrap: pretty; }
+
+form { display: grid; gap: var(--space-2xs); }
+.field-label { font-size: var(--text-sm); font-weight: 600; font-stretch: 72%; color: var(--color-ink-2); }
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius);
+}
+input {
+  min-width: 0;
+  height: 40px;
+  padding: 0 var(--space-sm);
+  font: 500 var(--text-sm) var(--font-mono);
+  color: var(--color-accent);
+  background: var(--color-paper-2);
+  border: 0;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+input::placeholder { color: var(--color-ink-2); }
+input:hover { background: var(--color-paper-3); }
+input:focus-visible { outline-offset: -3px; background: var(--color-paper); }
+input:disabled { color: var(--color-ink-2); background: var(--color-paper-3); cursor: default; }
+
+button {
+  font: 600 var(--text-md)/1 var(--font-body);
+  cursor: pointer;
+}
+#go {
+  height: 40px;
+  padding: 0 var(--space-md);
+  color: var(--color-accent-ink);
+  background: var(--color-accent);
+  border: 0;
+  border-left: 1px solid var(--color-rule);
+  border-radius: 0 1px 1px 0;
+  transition: background-color var(--dur-micro) ease;
+}
+#go:hover { background: var(--color-accent-deep); }
+#go:active { transform: translateY(1px); }
+#go:focus-visible { outline-offset: 2px; }
+#go:disabled { color: var(--color-ink-2); background: var(--color-paper-3); cursor: progress; transform: none; }
+
+#msg { min-height: 1.45em; font-size: var(--text-sm); color: var(--color-ink-2); }
+#msg.bad { color: var(--color-error); font-weight: 600; }
+
+#team { display: grid; gap: var(--space-xs); padding-top: var(--space-sm); border-top: 2px solid var(--color-rule); }
+#team h2 { font-size: var(--text-sm); font-weight: 600; font-stretch: 72%; color: var(--color-ink-2); }
+ol { list-style: none; padding: 0; counter-reset: mon; border-top: 1px solid var(--color-rule); }
+ol li {
+  counter-increment: mon;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  padding: var(--space-xs) 0;
+  font-weight: 500;
+  color: var(--color-accent);
+  border-bottom: 1px solid var(--color-rule-soft);
+  overflow-wrap: break-word;
+}
+ol li::before { content: counter(mon); color: var(--color-ink-2); font-variant-numeric: tabular-nums; }
+
+button.link {
+  justify-self: start;
+  padding: var(--space-2xs) 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.2em;
+}
+button.link:hover { color: var(--color-error); text-decoration-color: var(--color-error); }
+button.link:active { color: var(--color-error); }
+button.link:disabled { color: var(--color-ink-2); cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; }
+}

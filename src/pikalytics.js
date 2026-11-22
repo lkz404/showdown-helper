@@ -5,6 +5,10 @@
 // Fallbacks used when Pikalytics has no data for the battle's own format.
 export const FALLBACK_DOUBLES = 'gen9vgc2026regf';
 export const FALLBACK_SINGLES = 'gen9ou';
+// Pokémon Champions is a different game (its own movepools and Megas): its formats fall back
+// to Champions data, never to Scarlet/Violet's (verified 2026-11 on /ai/pokedex).
+export const FALLBACK_CHAMPIONS_DOUBLES = 'gen9championsvgc2026regmc';
+export const FALLBACK_CHAMPIONS_SINGLES = 'gen9championsou';
 
 // Showdown format id -> Pikalytics slug, or '' when the format has no meaningful
 // usage data of its own (randoms, customs) and only the fallback should be used.
@@ -19,7 +23,10 @@ export function toPikalyticsFormat(showdownFormat) {
 export function formatCandidates(showdownFormat, gameType) {
   const primary = toPikalyticsFormat(showdownFormat);
   const doubles = /doubles|triples|multi/i.test(gameType || '') || /vgc|doubles/.test(primary);
-  const fallback = doubles ? FALLBACK_DOUBLES : FALLBACK_SINGLES;
+  const champions = /^gen9champions/.test(String(showdownFormat || '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+  const fallback = champions
+    ? (doubles ? FALLBACK_CHAMPIONS_DOUBLES : FALLBACK_CHAMPIONS_SINGLES)
+    : (doubles ? FALLBACK_DOUBLES : FALLBACK_SINGLES);
   return [...new Set([primary, fallback].filter(Boolean))];
 }
 

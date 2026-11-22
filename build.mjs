@@ -15,3 +15,4 @@ await build({
 
 cpSync('src/panel.css', 'dist/panel.css');
 cpSync('src/popup.html', 'dist/popup.html');
+cpSync('src/popup.css', 'dist/popup.css');

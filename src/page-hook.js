@@ -121,8 +121,23 @@ function readEnemy(battle) {
   return out;
 }
 
+// 'p1: Incineroar' / 'p1a: Incineroar' -> 'Incineroar' (the nickname the side knows it by).
+const identName = (ident) => String(ident || '').replace(/^p\d[a-z]?:\s*/, '');
+
+// Live stat stages of our Pokemon on the field. The request is only sent at the start of a turn,
+// so stages raised or dropped mid-turn come from the battle state, which updates as moves resolve.
+// Benched Pokemon have none: switching out clears them.
+function activeBoosts(battle) {
+  const out = new Map();
+  for (const a of (battle.mySide && battle.mySide.active) || []) {
+    if (a && !a.fainted) out.set(identName(a.ident || a.name), { ...(a.boosts || {}) });
+  }
+  return out;
+}
+
 function readTeam(room, battle) {
   const req = room.request && room.request.side && room.request.side.pokemon;
+  const live = activeBoosts(battle);
   if (req && req.length) {
     return req.map((p) => {
       const details = String(p.details || '');
@@ -140,6 +155,7 @@ function readTeam(room, battle) {
         status: c.status,
         fainted: c.fainted,
         active: !!p.active,
+        boosts: (p.active && live.get(identName(p.ident))) || {},
         item: p.item && p.item !== 'none' ? p.item : '',
         ability: p.ability || p.baseAbility || '',
         tera: p.terastallized || '',
@@ -161,6 +177,7 @@ function readTeam(room, battle) {
     status: p.status || '',
     fainted: !!p.fainted,
     active: active.has(p),
+    boosts: active.has(p) ? { ...(p.boosts || {}) } : {},
     item: p.item || '',
     ability: p.ability || '',
     tera: p.terastallized || '',

@@ -1,13 +1,13 @@
 import { estimateDamage, megaInfo, moveInfo, spriteIdFor, withPasteStats } from './calc.js';
 import { typeIcon } from './type-icons.js';
 
-const TYPE_COLORS = {
-  Normal: '#a8a77a', Fire: '#ee8130', Water: '#6390f0', Electric: '#f7d02c',
-  Grass: '#7ac74c', Ice: '#96d9d6', Fighting: '#c22e28', Poison: '#a33ea1',
-  Ground: '#e2bf65', Flying: '#a98ff3', Psychic: '#f95587', Bug: '#a6b91a',
-  Rock: '#b6a136', Ghost: '#735797', Dragon: '#6f35fc', Dark: '#705746',
-  Steel: '#b7b7ce', Fairy: '#d685ad', Stellar: '#40b5a5', '???': '#68a090',
-};
+// Each type's colour is a token in panel.css (--type-fire, ...); anything else uses --type-unknown.
+const KNOWN_TYPES = new Set(['normal', 'fire', 'water', 'electric', 'grass', 'ice', 'fighting', 'poison', 'ground',
+  'flying', 'psychic', 'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy', 'stellar']);
+function typeToken(type) {
+  const t = String(type || '').toLowerCase();
+  return `var(--type-${KNOWN_TYPES.has(t) ? t : 'unknown'})`;
+}
 const RETRY_MS = 30 * 1000;
 
 const state = {
@@ -25,13 +25,17 @@ const state = {
 // ---------- panel skeleton ----------
 const panel = document.createElement('div');
 panel.id = 'smh-panel';
+panel.dataset.theme = 'smh-sheet'; // panel.css scopes its tokens to this block
 panel.innerHTML = `
   <div class="smh-header">
     <span class="smh-title">Enemy top moves</span>
-    <button id="smh-toggle" type="button" title="Collapse panel">–</button>
+    <button id="smh-toggle" type="button" title="Collapse panel" aria-label="Collapse panel" aria-expanded="true">−</button>
   </div>
   <div class="smh-target">
-    <div class="smh-target-label">Damage vs</div>
+    <div class="smh-target-head">
+      <div class="smh-target-label">Damage vs</div>
+      <div class="smh-stages" id="smh-tstages"></div>
+    </div>
     <div class="smh-team" id="smh-team"></div>
   </div>
   <div class="smh-body" id="smh-body"></div>`;
@@ -42,6 +46,7 @@ const body = panel.querySelector('#smh-body');
 const teamEl = panel.querySelector('#smh-team');
 const toggleBtn = panel.querySelector('#smh-toggle');
 const targetLabel = panel.querySelector('.smh-target-label');
+const targetStages = panel.querySelector('#smh-tstages');
 
 // The imported team comes from the toolbar popup; follow it live.
 try {
@@ -68,8 +73,10 @@ teamEl.addEventListener('click', (ev) => {
 toggleBtn.addEventListener('click', () => {
   state.collapsed = !state.collapsed;
   panel.classList.toggle('smh-collapsed', state.collapsed);
-  toggleBtn.textContent = state.collapsed ? '+' : '–';
+  toggleBtn.textContent = state.collapsed ? '+' : '−';
   toggleBtn.title = state.collapsed ? 'Expand panel' : 'Collapse panel';
+  toggleBtn.setAttribute('aria-label', toggleBtn.title);
+  toggleBtn.setAttribute('aria-expanded', String(!state.collapsed));
   updateDock();
 });
 
@@ -139,8 +146,9 @@ function requestUsage(snap, species) {
       }
     );
   } catch (e) {
-    // Extension was reloaded/updated: this content script is orphaned.
-    entry.status = 'error';
+    // Extension was reloaded/updated: this content script is orphaned and can never reach the
+    // extension again, so say so instead of sitting on 'Fetching Pikalytics…'.
+    entry.status = 'orphaned'; // the render that asked shows it
   }
   return entry;
 }
@@ -153,6 +161,15 @@ function pickTarget(team) {
   const def = team.find((m) => m.active && !m.fainted) || team.find((m) => !m.fainted) || team[0];
   state.targetKey = def ? def.key : null;
   state.userPicked = false;
+}
+
+// Stat stages the damage numbers already include, e.g. 'Atk +1', 'Def −2' (a real minus sign).
+const STAT_NAMES = { atk: 'Atk', def: 'Def', spa: 'SpA', spd: 'SpD' };
+function stageChips(b, keys) {
+  return keys
+    .filter((k) => b && Number.isFinite(b[k]) && b[k] !== 0)
+    .map((k) => `<span class="smh-stage" title="${STAT_NAMES[k]} ${b[k] > 0 ? 'raised' : 'lowered'} ${Math.abs(b[k])} stage${Math.abs(b[k]) > 1 ? 's' : ''}, included in the damage">${STAT_NAMES[k]} ${b[k] > 0 ? '+' : '−'}${Math.abs(b[k])}</span>`)
+    .join('');
 }
 
 function hpClass(frac) {
@@ -178,6 +195,7 @@ function renderTargets(snap) {
     state.teamSig = '';
     targetLabel.textContent = 'Damage vs';
     teamEl.innerHTML = '<div class="smh-note">Damage appears once the battle starts</div>';
+    targetStages.innerHTML = '';
     return null;
   }
   const sets = state.paste ? state.paste.sets : [];
@@ -187,34 +205,35 @@ function renderTargets(snap) {
   const sig = JSON.stringify([state.targetKey, team.map((m) => [m.key, m.species, m.fainted, m.curHP, m.maxhp])]);
   if (sig !== state.teamSig) {
     state.teamSig = sig;
+    teamEl.style.setProperty('--cols', String(team.length > 4 ? 3 : Math.max(team.length, 1)));
     teamEl.innerHTML = team.map((m) => teamBox(m, snap)).join('');
   }
-  targetLabel.textContent = team.some((m) => m.fromPaste) ? 'Damage vs · Pokepaste stats' : 'Damage vs';
-  return team.find((m) => m.key === state.targetKey) || null;
+  targetLabel.textContent = team.some((m) => m.fromPaste) ? 'Damage vs your Pokepaste stats' : 'Damage vs';
+  const picked = team.find((m) => m.key === state.targetKey) || null;
+  targetStages.innerHTML = picked ? stageChips(picked.boosts, ['def', 'spd']) : '';
+  return picked;
 }
 
-// Types whose colour is light enough that the tile needs dark text.
-const LIGHT_TYPES = new Set(['Normal', 'Electric', 'Ground', 'Ice', 'Steel', 'Bug', 'Grass', 'Flying', 'Fairy', 'Rock']);
+// Types dark enough that their swatch takes a white glyph; every other type takes navy (the higher contrast of the two).
+const DARK_TYPES = new Set(['Fighting', 'Poison', 'Ghost', 'Dragon', 'Dark']);
 
 function renderMove(snap, enemy, member, { move, pct }) {
   const d = member
     ? estimateDamage(snap, enemy, move, member)
     : { ...moveInfo(snap.gen, move), text: '', ko: '' };
-  const color = TYPE_COLORS[d.type] || TYPE_COLORS['???'];
+  const color = typeToken(d.type);
   const name = d.name || move;
   const icon = typeIcon(d.type);
   const usage = Number.isFinite(pct) ? `${pct >= 10 ? Math.round(pct) : pct.toFixed(1)}% usage` : '';
   const dmg = [d.text, d.ko].filter(Boolean).join(' · ');
-  const cls = ['smh-move', LIGHT_TYPES.has(d.type) ? 'smh-light' : '', d.text === '—' ? 'smh-status' : '']
+  const cls = ['smh-move', DARK_TYPES.has(d.type) ? '' : 'smh-light', d.text === '—' ? 'smh-status' : '', d.canKO ? 'smh-ko' : '', d.text === '0%' ? 'smh-zero' : '']
     .filter(Boolean)
     .join(' ');
   return `<div class="${cls}" style="--c:${color}" title="${esc(name)} (${esc(d.type)})${dmg ? ' · ' + esc(dmg) : ''}">
-    <div class="smh-who">
-      ${icon ? `<span class="smh-ticon">${icon}</span>` : ''}
-      <div class="smh-mtext">
-        <div class="smh-nameline"><span class="smh-mname">${esc(name)}</span>${d.canKO ? '<span class="smh-kotag">KO</span>' : ''}</div>
-        ${usage ? `<span class="smh-usage">${usage}</span>` : ''}
-      </div>
+    <span class="smh-ticon">${icon}</span>
+    <div class="smh-mtext">
+      <div class="smh-nameline"><span class="smh-mname">${esc(name)}</span>${d.canKO ? '<span class="smh-kotag">KO</span>' : ''}</div>
+      ${usage ? `<span class="smh-usage">${usage}</span>` : ''}
     </div>
     <span class="smh-dmg">${esc(d.text)}</span>
   </div>`;
@@ -260,19 +279,25 @@ function renderCard(snap, baseEnemy, member) {
   let rows;
   let src = ''; // shows which Pikalytics format was used when it isn't the battle's own
   if (usage.status === 'loading') {
-    rows = '<div class="smh-note">Fetching Pikalytics…</div>';
+    // The sheet's five rows, ruled and empty, until Pikalytics answers.
+    const ghost = '<div class="smh-move"><span class="smh-ticon"></span></div>';
+    rows = `<div class="smh-moves smh-skel" aria-busy="true"><div class="smh-move"><span class="smh-ticon"></span><span class="smh-note">Fetching Pikalytics…</span></div>${ghost.repeat(4)}</div>`;
   } else if (usage.status !== 'ok') {
     rows = `<div class="smh-note">${
-      usage.status === 'error' ? 'Pikalytics unavailable' : `No usage data for ${esc(snap.format || 'this format')}`
+      usage.status === 'orphaned' ? 'Showdown Helper was updated. Reload this tab to see moves again.' : usage.status === 'error' ? 'Pikalytics unavailable' : `No usage data for ${esc(snap.format || 'this format')}`
     }</div>`;
   } else {
-    if (usage.data.format !== snap.format) src = ` <span class="smh-src">(${esc(usage.data.format)})</span>`;
+    if (usage.data.format !== snap.format) src = `<span class="smh-src">(${esc(usage.data.format)})</span>`;
     rows = `<div class="smh-moves">${usage.data.moves.map((m) => renderMove(snap, enemy, member, m)).join('')}</div>`;
   }
+  const chips = stageChips(enemy.boosts, ['atk', 'spa']);
+  const stages = chips ? `<span class="smh-stages">${chips}</span>` : '';
   return `<div class="smh-card">
-    ${spriteImg('smh-sprite', enemy, snap.gen)}
-    <div class="smh-name">${esc(enemy.species)}${src}</div>
-    ${megaButtons(m)}
+    <div class="smh-chead">
+      ${spriteImg('smh-sprite', enemy, snap.gen)}
+      <div class="smh-name"><span>${esc(enemy.species)}</span>${src}${stages}</div>
+      ${megaButtons(m)}
+    </div>
     ${rows}
   </div>`;
 }
